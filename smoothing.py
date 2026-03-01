@@ -4,7 +4,7 @@ import numpy as np
 # ----------------------------
 # Load Image
 # ----------------------------
-img = cv2.imread("/Users/parthbole/Desktop/IP/ImageSmoothing/img.png")
+img = cv2.imread("/workspaces/ip/img.png")
 if img is None:
     print("Image not found!")
     exit()
@@ -24,7 +24,9 @@ weighted_img = cv2.filter2D(gray, -1, weighted_kernel)
 
 gaussian_img = cv2.GaussianBlur(gray, (5,5), 1)
 
-# Convert all to BGR for colored text
+# ----------------------------
+# Convert to BGR for text
+# ----------------------------
 def to_bgr(image):
     return cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
 
@@ -34,7 +36,7 @@ weighted_img = to_bgr(weighted_img)
 gaussian_img = to_bgr(gaussian_img)
 
 # ----------------------------
-# Add Centered Label
+# Add Image Label
 # ----------------------------
 def add_label(image, text):
     h, w, c = image.shape
@@ -55,17 +57,66 @@ def add_label(image, text):
     
     return np.vstack((image, label))
 
-# ----------------------------
-# Add Labels
-# ----------------------------
 orig_l = add_label(gray, "Original")
 mean_l = add_label(mean_img, "Mean Filter")
 weighted_l = add_label(weighted_img, "Weighted Filter")
 gaussian_l = add_label(gaussian_img, "Gaussian Filter")
 
-# Combine horizontally
-final = np.hstack((orig_l, mean_l, weighted_l, gaussian_l))
+# ----------------------------
+# Combine Images
+# ----------------------------
+final_images = np.hstack((orig_l, mean_l, weighted_l, gaussian_l))
 
-cv2.imshow("Image Smoothing Comparison", final)
-cv2.waitKey(0)
-cv2.destroyAllWindows()
+# ----------------------------
+# Add Centered Comparison Table
+# ----------------------------
+table_height = 260
+h, w, c = final_images.shape
+
+table = np.ones((table_height, w, 3), dtype=np.uint8) * 255
+
+font = cv2.FONT_HERSHEY_SIMPLEX
+font_scale = 1.2
+thickness = 2
+
+# Table width (75% of image width)
+table_width = int(w * 0.75)
+start_x = (w - table_width) // 2
+end_x = start_x + table_width
+
+# Outer border
+cv2.rectangle(table, (start_x, 40), (end_x, table_height-40), (0,0,0), 2)
+
+# Column positions
+col1 = start_x + table_width // 6
+col2 = start_x + table_width // 2
+col3 = start_x + 5 * table_width // 6
+
+# Header
+cv2.putText(table, "Filter", (col1-60, 90), font, font_scale, (0,0,0), thickness)
+cv2.putText(table, "Blur Level", (col2-80, 90), font, font_scale, (0,0,0), thickness)
+cv2.putText(table, "Edge Preservation", (col3-120, 90), font, font_scale, (0,0,0), thickness)
+
+# Header underline
+cv2.line(table, (start_x, 110), (end_x, 110), (0,0,0), 2)
+
+rows = [
+    ("Mean", "High", "Low"),
+    ("Weighted", "Medium", "Medium"),
+    ("Gaussian", "Controlled", "High")
+]
+
+y = 160
+for r in rows:
+    cv2.putText(table, r[0], (col1-60, y), font, font_scale, (0,0,0), thickness)
+    cv2.putText(table, r[1], (col2-80, y), font, font_scale, (0,0,0), thickness)
+    cv2.putText(table, r[2], (col3-120, y), font, font_scale, (0,0,0), thickness)
+    y += 45
+
+# ----------------------------
+# Final Output
+# ----------------------------
+final = np.vstack((final_images, table))
+
+cv2.imwrite("result.png", final)
+print("Result saved as result.png")
